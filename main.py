@@ -9,7 +9,7 @@ import pandas as pd
 import re
 from tqdm import tqdm
 from glob import glob
-
+from src.models.model_factory import ModelManager
 # 환경 변수 로드
 load_dotenv()
 
@@ -25,22 +25,6 @@ if HF_TOKEN:
 else:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
 
-# 모델 저장 경로 설정
-MODEL_PATH = Path("E:/models/LLaVA-NeXT-Video-7B-32K-hf")
-
-def ensure_model():
-    """모델 파일 확인 및 다운로드"""
-    if not os.path.exists(MODEL_PATH):
-        print(f"모델 다운로드 중... 경로: {MODEL_PATH}")
-        snapshot_download(
-            repo_id="llava-hf/LLaVA-NeXT-Video-7B-32K-hf",
-            local_dir=MODEL_PATH,
-            token=HF_TOKEN,
-            ignore_patterns=["*.md", "*.txt"]
-        )
-    else:
-        print(f"기존 모델 사용: {MODEL_PATH}")
-    return MODEL_PATH
 
 def load_video(path):
     """비디오 파일을 프레임 배열로 로드"""
@@ -158,27 +142,43 @@ def process_directory(directory_path, pipeline, file_types=('*.jpg', '*.jpeg', '
 
 def main():
     # 모델 준비
-    model_path = ensure_model()
-    print(f"모델 경로: {model_path}")
+    # 모델 저장 경로 설정
+    model_id = "llava-hf/LLaVA-NeXT-Video-7B-32K-hf"
+    MODEL_PATH = "/home/joon/models"
+    #download_huggingface_model(model_id, MODEL_PATH)
+
+    # model_path = ensure_model(MODEL_PATH, model_id)
     
+    model_manager = ModelManager(token=HF_TOKEN)
+
+    model_path = model_manager.ensure_model(
+        model_id=model_id,
+        save_directory=MODEL_PATH
+    )
     # 파이프라인 초기화
     pipeline = EmotionPipeline(model_path=model_path)
-    
+    debug = True
     while True:
         print("\n=== 감정 분석 모드 선택 ===")
         print("1. 단일 파일 처리")
         print("2. 디렉토리 일괄 처리")
         print("3. 종료")
-        
-        choice = input("\n선택하세요 (1-3): ").strip()
+        if debug:
+            print("4. 디버그 모드")
+            choice = "1"
+        else:
+            choice = input("\n선택하세요 (1-3): ").strip()
         
         if choice == "1":
             # 단일 파일 처리
             print("\n=== 단일 파일 감정 분석 ===")
-            file_path = input("파일 경로를 입력하세요 (이미지 또는 비디오): ").strip()
-            if not file_path:
-                file_path = "E:/data/emotion/happy/happy_Image_2.jpg"  # 기본값
-                
+            if debug:
+                file_path = "/home/joon/Downloads/1.jpg" # "/home/joon/Downloads/angry.mp4" # 
+            else:
+                file_path = input("파일 경로를 입력하세요 (이미지 또는 비디오): ").strip()
+                if not file_path:
+                    file_path = "/home/joon/Downloads/angry.mp4" #"E:/data/emotion/happy/happy_Image_2.jpg"  # 기본값
+                    
             file_ext = os.path.splitext(file_path)[1].lower()
             try:
                 if file_ext in ['.jpg', '.jpeg', '.png']:
@@ -193,21 +193,25 @@ def main():
                 
                 result = pipeline.process(data)
                 if result["success"]:
-                    emotion, confidence = extract_emotion_and_confidence(result["emotion"])
                     print(f"\n파일: {os.path.basename(file_path)}")
-                    print(f"감정: {emotion}")
-                    print(f"신뢰도: {confidence:.2f}")
-                    print(f"상세 설명: {result['emotion']}")
+                    if result["is_emotion"]:
+                        print(f"감정: {result['emotion']}")
+                        print(f"설명: {result['explanation']}")
+                    else:
+                        print("감정 분류 불가")
+                        print(f"관찰 내용: {result['explanation']}")
                 else:
                     print(f"처리 실패: {result['emotion']}")
                     
             except Exception as e:
                 print(f"에러 발생: {str(e)}")
+            if debug:
+                break
             
         elif choice == "2":
             # 디렉토리 일괄 처리
             print("\n=== 디렉토리 일괄 처리 ===")
-            default_path= "E:/data/mer2024/test"
+            default_path= "home/joon/models"
             target_dir = input(f"처리할 디렉토리 경로를 입력하세요: default path: {default_path} ").strip()
             if not target_dir:
                 target_dir =  default_path # 기본값
