@@ -5,6 +5,7 @@
 wandb/
 outputs/
 data/
+
 ! data/meta.csv
 *.pt
 __pycache__/
