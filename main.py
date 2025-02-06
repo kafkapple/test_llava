@@ -177,7 +177,7 @@ def main():
             # Process single file
             print("\n=== Single File Emotion Analysis ===")
             if debug:
-                file_path = "/home/joon/Downloads/happy.jpeg" #""/home/joon/Downloads/angry.mp4" #"
+                file_path = "/home/joon/Downloads/Download.mp4" #"/home/joon/Downloads/happy.jpeg" #""/home/joon/Downloads/angry.mp4" #"
             else:
                 file_path = input("Enter file path (image or video): ").strip()
                 if not file_path:
